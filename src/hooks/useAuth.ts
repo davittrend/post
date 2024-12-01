@@ -6,7 +6,7 @@ import { useAccountStore } from '@/lib/store';
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const { initializeStore, resetStore } = useAccountStore();
+  const initializeStore = useAccountStore((state) => state.initializeStore);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -15,13 +15,11 @@ export function useAuth() {
       
       if (currentUser) {
         initializeStore(currentUser.uid);
-      } else {
-        resetStore();
       }
     });
 
     return () => unsubscribe();
-  }, [initializeStore, resetStore]);
+  }, [initializeStore]);
 
   return { user, loading };
 }

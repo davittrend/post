@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { produce } from 'immer';
 import { onValue, ref, get, set, remove } from 'firebase/database';
 import { database } from '../firebase';
@@ -15,10 +15,9 @@ interface AccountState {
   setAccounts: (accounts: PinterestAccount[]) => void;
   setSelectedAccount: (accountId: string | null) => void;
   setBoards: (accountId: string, boards: PinterestBoard[]) => Promise<void>;
-  getAccount: (accountId: string) => PinterestAccount | undefined;
+  getAccount: (accountId: string) => PinterestAccount;
   removeAccount: (accountId: string) => Promise<void>;
   initializeStore: (userId: string) => Promise<void>;
-  resetStore: () => void;
   setError: (error: string | null) => void;
 }
 
@@ -31,26 +30,38 @@ export const useAccountStore = create<AccountState>()(
       initialized: false,
       error: null,
 
-      setAccounts: (accounts) => set({ accounts }),
+      setAccounts: (accounts) => set(
+        produce((state) => {
+          state.accounts = accounts;
+        })
+      ),
       
-      setSelectedAccount: (accountId) => set({ selectedAccountId: accountId }),
+      setSelectedAccount: (accountId) => set(
+        produce((state) => {
+          state.selectedAccountId = accountId;
+        })
+      ),
       
       setBoards: async (accountId, boards) => {
         const userId = auth.currentUser?.uid;
-        if (!userId) throw new Error('User not authenticated');
-
-        try {
-          await set(ref(database, `users/${userId}/boards/${accountId}`), boards);
-          set(produce(state => { state.boards[accountId] = boards; }));
-        } catch (error) {
-          console.error('Error setting boards:', error);
-          throw new Error('Failed to save boards');
+        if (!userId) {
+          throw new Error('User not authenticated');
         }
+
+        await set(ref(database, `users/${userId}/boards/${accountId}`), boards);
+        
+        set(
+          produce((state) => {
+            state.boards[accountId] = boards;
+          })
+        );
       },
 
       removeAccount: async (accountId) => {
         const userId = auth.currentUser?.uid;
-        if (!userId) throw new Error('User not authenticated');
+        if (!userId) {
+          throw new Error('User not authenticated');
+        }
 
         try {
           // Remove from Firebase
@@ -59,51 +70,50 @@ export const useAccountStore = create<AccountState>()(
             remove(ref(database, `users/${userId}/boards/${accountId}`))
           ]);
 
-          // Update local state
-          set(produce(state => {
-            state.accounts = state.accounts.filter(a => a.id !== accountId);
-            delete state.boards[accountId];
-            if (state.selectedAccountId === accountId) {
-              state.selectedAccountId = state.accounts[0]?.id || null;
-            }
-          }));
+          // Update local state immediately
+          set(
+            produce((state) => {
+              state.accounts = state.accounts.filter(a => a.id !== accountId);
+              delete state.boards[accountId];
+              if (state.selectedAccountId === accountId) {
+                state.selectedAccountId = state.accounts[0]?.id || null;
+              }
+            })
+          );
         } catch (error) {
           console.error('Error removing account:', error);
           throw new Error('Failed to remove account');
         }
       },
 
-      resetStore: () => {
-        set({
-          accounts: [],
-          selectedAccountId: null,
-          boards: {},
-          initialized: false,
-          error: null
-        });
-      },
-
-      setError: (error) => set({ error }),
+      setError: (error) => set(
+        produce((state) => {
+          state.error = error;
+        })
+      ),
       
-      getAccount: (accountId) => get().accounts.find(a => a.id === accountId),
+      getAccount: (accountId) => {
+        const account = get().accounts.find(a => a.id === accountId);
+        if (!account) {
+          throw new Error('Account not found');
+        }
+        return account;
+      },
 
       initializeStore: async (userId) => {
         if (get().initialized) return;
 
         try {
-          // Remove any existing listeners
           const accountsRef = ref(database, `users/${userId}/accounts`);
           const boardsRef = ref(database, `users/${userId}/boards`);
 
-          // Initial data fetch
+          // Initial data load
           const [accountsSnapshot, boardsSnapshot] = await Promise.all([
             get(accountsRef),
             get(boardsRef)
           ]);
 
           const accounts: PinterestAccount[] = [];
-          const boards: Record<string, PinterestBoard[]> = {};
-
           accountsSnapshot.forEach((childSnapshot) => {
             accounts.push({
               id: childSnapshot.key!,
@@ -111,17 +121,19 @@ export const useAccountStore = create<AccountState>()(
             });
           });
 
+          const boards: Record<string, PinterestBoard[]> = {};
           boardsSnapshot.forEach((childSnapshot) => {
             boards[childSnapshot.key!] = childSnapshot.val();
           });
 
-          set({
-            accounts,
-            boards,
-            initialized: true,
-            selectedAccountId: accounts[0]?.id || null,
-            error: null
-          });
+          set(
+            produce((state) => {
+              state.accounts = accounts;
+              state.boards = boards;
+              state.initialized = true;
+              state.selectedAccountId = accounts[0]?.id || null;
+            })
+          );
 
           // Set up real-time listeners
           onValue(accountsRef, (snapshot) => {
@@ -133,12 +145,14 @@ export const useAccountStore = create<AccountState>()(
               });
             });
             
-            set(produce(state => {
-              state.accounts = updatedAccounts;
-              if (state.selectedAccountId && !updatedAccounts.find(a => a.id === state.selectedAccountId)) {
-                state.selectedAccountId = updatedAccounts[0]?.id || null;
-              }
-            }));
+            set(
+              produce((state) => {
+                state.accounts = updatedAccounts;
+                if (state.selectedAccountId && !updatedAccounts.find(a => a.id === state.selectedAccountId)) {
+                  state.selectedAccountId = updatedAccounts[0]?.id || null;
+                }
+              })
+            );
           });
 
           onValue(boardsRef, (snapshot) => {
@@ -146,20 +160,27 @@ export const useAccountStore = create<AccountState>()(
             snapshot.forEach((childSnapshot) => {
               updatedBoards[childSnapshot.key!] = childSnapshot.val();
             });
-            set({ boards: updatedBoards });
+            
+            set(
+              produce((state) => {
+                state.boards = updatedBoards;
+              })
+            );
           });
         } catch (error) {
           console.error('Error initializing store:', error);
-          set({
-            error: error instanceof Error ? error.message : 'Failed to initialize store',
-            initialized: false
-          });
+          set(
+            produce((state) => {
+              state.error = error instanceof Error ? error.message : 'Failed to initialize store';
+            })
+          );
         }
       },
     }),
     {
       name: 'pinterest-accounts',
       version: 1,
+      storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         selectedAccountId: state.selectedAccountId,
       }),

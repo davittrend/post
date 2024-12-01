@@ -1,7 +1,7 @@
 import { Handler } from '@netlify/functions';
 import fetch from 'node-fetch';
 
-const PINTEREST_API_URL = 'https://api-sandbox.pinterest.com/v5';
+const PINTEREST_API_URL = 'https://api.pinterest.com/v5';
 
 export const handler: Handler = async (event) => {
   const headers = {
@@ -51,7 +51,7 @@ export const handler: Handler = async (event) => {
         return {
           statusCode: tokenResponse.status,
           headers,
-          body: JSON.stringify({ message: tokenData.message || 'Token exchange failed' }),
+          body: JSON.stringify(tokenData),
         };
       }
 
@@ -69,7 +69,7 @@ export const handler: Handler = async (event) => {
         return {
           statusCode: userResponse.status,
           headers,
-          body: JSON.stringify({ message: userData.message || 'Failed to fetch user data' }),
+          body: JSON.stringify(userData),
         };
       }
 
@@ -108,7 +108,7 @@ export const handler: Handler = async (event) => {
         return {
           statusCode: response.status,
           headers,
-          body: JSON.stringify({ message: data.message || 'Failed to fetch boards' }),
+          body: JSON.stringify(data),
         };
       }
 
