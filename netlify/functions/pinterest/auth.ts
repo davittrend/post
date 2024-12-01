@@ -1,7 +1,6 @@
 import { Handler } from '@netlify/functions';
 import fetch from 'node-fetch';
-
-const PINTEREST_API_URL = 'https://api-sandbox.pinterest.com/v5';
+import { PINTEREST_API_URL, validateConfig } from './config';
 
 export const handler: Handler = async (event) => {
   const headers = {
@@ -11,35 +10,26 @@ export const handler: Handler = async (event) => {
   };
 
   if (event.httpMethod === 'OPTIONS') {
-    return { 
-      statusCode: 204, 
-      headers,
-      body: '' 
-    };
+    return { statusCode: 204, headers, body: '' };
   }
 
   try {
     const { code, redirectUri, clientId, clientSecret } = JSON.parse(event.body || '{}');
+    
+    const config = validateConfig({ clientId, clientSecret, redirectUri });
 
-    if (!code || !redirectUri || !clientId || !clientSecret) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: 'Missing required parameters' }),
-      };
-    }
-
-    // Exchange code for token using sandbox endpoint
+    // Exchange code for token
     const tokenResponse = await fetch(`${PINTEREST_API_URL}/oauth/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
       },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code,
-        redirect_uri: redirectUri,
+        redirect_uri: config.redirectUri,
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
       }).toString(),
     });
 
@@ -50,11 +40,13 @@ export const handler: Handler = async (event) => {
       return {
         statusCode: tokenResponse.status,
         headers,
-        body: JSON.stringify({ error: tokenData.message || 'Token exchange failed' }),
+        body: JSON.stringify({ 
+          error: tokenData.message || tokenData.error_description || 'Token exchange failed' 
+        }),
       };
     }
 
-    // Fetch user data from sandbox API
+    // Fetch user data
     const userResponse = await fetch(`${PINTEREST_API_URL}/user_account`, {
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`,
@@ -68,7 +60,9 @@ export const handler: Handler = async (event) => {
       return {
         statusCode: userResponse.status,
         headers,
-        body: JSON.stringify({ error: userData.message || 'Failed to fetch user data' }),
+        body: JSON.stringify({ 
+          error: userData.message || 'Failed to fetch user data' 
+        }),
       };
     }
 

@@ -1,13 +1,11 @@
-// src/lib/pinterest/api.ts
 import type { PinterestBoard, PinterestToken, PinterestUser } from '@/types/pinterest';
 import { env } from '@/lib/config/env';
 
-const PINTEREST_API_URL = 'https://api-sandbox.pinterest.com/v5';
-const PINTEREST_OAUTH_URL = 'https://www.pinterest.com/sandbox/oauth';
+const PINTEREST_OAUTH_URL = 'https://www.pinterest.com/oauth';
 const REDIRECT_URI = typeof window !== 'undefined' ? `${window.location.origin}/callback` : '';
 
 export function getPinterestAuthUrl(): string {
-  const scope = 'boards:read,pins:read,pins:write,user_accounts:read,boards:write';
+  const scope = 'boards:read,pins:read,pins:write,user_accounts:read';
   const state = crypto.randomUUID();
   const redirectUri = encodeURIComponent(REDIRECT_URI);
   
@@ -29,7 +27,7 @@ export async function exchangePinterestCode(code: string): Promise<{ token: Pint
   if (!response.ok) {
     const error = await response.json();
     console.error('Pinterest token exchange failed:', error);
-    throw new Error(error.message || 'Failed to exchange Pinterest code');
+    throw new Error(error.message || error.error || 'Failed to exchange Pinterest code');
   }
 
   return response.json();
@@ -37,7 +35,6 @@ export async function exchangePinterestCode(code: string): Promise<{ token: Pint
 
 export async function fetchPinterestBoards(accessToken: string): Promise<PinterestBoard[]> {
   const response = await fetch('/.netlify/functions/pinterest/boards', {
-    method: 'GET',
     headers: { 
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json'
@@ -47,7 +44,7 @@ export async function fetchPinterestBoards(accessToken: string): Promise<Pintere
   if (!response.ok) {
     const error = await response.json();
     console.error('Failed to fetch Pinterest boards:', error);
-    throw new Error(error.message || 'Failed to fetch boards');
+    throw new Error(error.message || error.error || 'Failed to fetch boards');
   }
 
   const data = await response.json();

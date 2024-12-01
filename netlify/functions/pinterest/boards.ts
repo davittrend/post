@@ -1,7 +1,6 @@
 import { Handler } from '@netlify/functions';
 import fetch from 'node-fetch';
-
-const PINTEREST_API_URL = 'https://api-sandbox.pinterest.com/v5';
+import { PINTEREST_API_URL } from './config';
 
 export const handler: Handler = async (event) => {
   const headers = {
@@ -11,11 +10,7 @@ export const handler: Handler = async (event) => {
   };
 
   if (event.httpMethod === 'OPTIONS') {
-    return { 
-      statusCode: 204, 
-      headers,
-      body: '' 
-    };
+    return { statusCode: 204, headers, body: '' };
   }
 
   try {
@@ -28,22 +23,22 @@ export const handler: Handler = async (event) => {
       };
     }
 
-    // Fetch boards from sandbox API
     const response = await fetch(`${PINTEREST_API_URL}/boards`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json',
       },
     });
 
     const data = await response.json();
     
     if (!response.ok) {
-      console.error('Pinterest API Error:', data);
+      console.error('Failed to fetch Pinterest boards:', data);
       return {
         statusCode: response.status,
         headers,
-        body: JSON.stringify({ error: data.message || 'Failed to fetch boards' }),
+        body: JSON.stringify({ 
+          error: data.message || 'Failed to fetch boards' 
+        }),
       };
     }
 

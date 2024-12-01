@@ -1,7 +1,7 @@
 import { Handler } from '@netlify/functions';
 import fetch from 'node-fetch';
 
-const PINTEREST_API_URL = 'https://api.pinterest.com/v5';
+const PINTEREST_API_URL = 'https://api-sandbox.pinterest.com/v5';
 
 export const handler: Handler = async (event) => {
   const headers = {
@@ -27,7 +27,7 @@ export const handler: Handler = async (event) => {
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ message: 'Missing required parameters' }),
+          body: JSON.stringify({ error: 'Missing required parameters' }),
         };
       }
 
@@ -90,7 +90,7 @@ export const handler: Handler = async (event) => {
         return {
           statusCode: 401,
           headers,
-          body: JSON.stringify({ message: 'No access token provided' }),
+          body: JSON.stringify({ error: 'No access token provided' }),
         };
       }
 
@@ -122,7 +122,7 @@ export const handler: Handler = async (event) => {
     return {
       statusCode: 404,
       headers,
-      body: JSON.stringify({ message: 'Not found' }),
+      body: JSON.stringify({ error: 'Not found' }),
     };
   } catch (error) {
     console.error('Pinterest API Error:', error);
@@ -130,7 +130,7 @@ export const handler: Handler = async (event) => {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        message: error instanceof Error ? error.message : 'Internal server error',
+        error: error instanceof Error ? error.message : 'Internal server error',
       }),
     };
   }
