@@ -1,3 +1,4 @@
+// netlify/functions/pinterest/index.ts
 import { Handler } from '@netlify/functions';
 import fetch from 'node-fetch';
 
@@ -20,7 +21,7 @@ export const handler: Handler = async (event) => {
 
   try {
     // Handle token exchange
-    if (event.path === '/.netlify/functions/pinterest/auth') {
+    if (event.path.endsWith('/auth')) {
       const { code, redirectUri, clientId, clientSecret } = JSON.parse(event.body || '{}');
 
       if (!code || !redirectUri || !clientId || !clientSecret) {
@@ -51,7 +52,7 @@ export const handler: Handler = async (event) => {
         return {
           statusCode: tokenResponse.status,
           headers,
-          body: JSON.stringify(tokenData),
+          body: JSON.stringify({ error: tokenData.message || 'Token exchange failed' }),
         };
       }
 
@@ -69,7 +70,7 @@ export const handler: Handler = async (event) => {
         return {
           statusCode: userResponse.status,
           headers,
-          body: JSON.stringify(userData),
+          body: JSON.stringify({ error: userData.message || 'Failed to fetch user data' }),
         };
       }
 
@@ -84,7 +85,7 @@ export const handler: Handler = async (event) => {
     }
 
     // Handle boards fetch
-    if (event.path === '/.netlify/functions/pinterest/boards') {
+    if (event.path.endsWith('/boards')) {
       const accessToken = event.headers.authorization?.replace('Bearer ', '');
       if (!accessToken) {
         return {
@@ -97,6 +98,7 @@ export const handler: Handler = async (event) => {
       const response = await fetch(`${PINTEREST_API_URL}/boards`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json',
         },
       });
 
@@ -107,7 +109,7 @@ export const handler: Handler = async (event) => {
         return {
           statusCode: response.status,
           headers,
-          body: JSON.stringify(data),
+          body: JSON.stringify({ error: data.message || 'Failed to fetch boards' }),
         };
       }
 

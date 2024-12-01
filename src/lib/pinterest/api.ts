@@ -1,10 +1,10 @@
+// src/lib/pinterest/api.ts
 import type { PinterestBoard, PinterestToken, PinterestUser } from '@/types/pinterest';
 import { env } from '@/lib/config/env';
 
-// Use the sandbox domain for all Pinterest API interactions
-const PINTEREST_API_URL = 'https://api.pinterest.com/v5';
-const PINTEREST_OAUTH_URL = 'https://www.pinterest.com/oauth';
-const REDIRECT_URI = `${window.location.origin}/callback`;
+const PINTEREST_API_URL = 'https://api-sandbox.pinterest.com/v5';
+const PINTEREST_OAUTH_URL = 'https://www.pinterest.com/sandbox/oauth';
+const REDIRECT_URI = typeof window !== 'undefined' ? `${window.location.origin}/callback` : '';
 
 export function getPinterestAuthUrl(): string {
   const scope = 'boards:read,pins:read,pins:write,user_accounts:read,boards:write';
@@ -15,7 +15,7 @@ export function getPinterestAuthUrl(): string {
 }
 
 export async function exchangePinterestCode(code: string): Promise<{ token: PinterestToken; user: PinterestUser }> {
-  const response = await fetch('/.netlify/functions/pinterest', {
+  const response = await fetch('/.netlify/functions/pinterest/auth', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ 
@@ -36,7 +36,7 @@ export async function exchangePinterestCode(code: string): Promise<{ token: Pint
 }
 
 export async function fetchPinterestBoards(accessToken: string): Promise<PinterestBoard[]> {
-  const response = await fetch('/.netlify/functions/pinterest', {
+  const response = await fetch('/.netlify/functions/pinterest/boards', {
     method: 'GET',
     headers: { 
       'Authorization': `Bearer ${accessToken}`,
