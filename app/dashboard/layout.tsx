@@ -11,7 +11,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export default function DashboardLayout({
             </div>
             <div className="flex items-center">
               <span className="mr-4">{user.email}</span>
-              <Button onClick={() => router.push('/api/auth/signout')} variant="ghost">Log out</Button>
+              <Button onClick={signOut} variant="ghost">Log out</Button>
             </div>
           </div>
         </div>
