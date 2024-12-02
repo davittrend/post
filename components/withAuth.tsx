@@ -2,21 +2,23 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
-export function withAuth<P extends object>(
-  WrappedComponent: React.ComponentType<P>
-) {
+export function withAuth<P extends object>(WrappedComponent: React.ComponentType<P>) {
   return function WithAuth(props: P) {
-    const { user } = useAuth();
+    const { user, isLoading } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
-      if (!user) {
+      if (!isLoading && !user) {
         router.push('/login');
       }
-    }, [user, router]);
+    }, [user, isLoading, router]);
+
+    if (isLoading) {
+      return <div>Loading...</div>;
+    }
 
     if (!user) {
-      return null; // or a loading spinner
+      return null;
     }
 
     return <WrappedComponent {...props} />;
