@@ -1,0 +1,9 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/refresh-pinterest-tokens",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
+
