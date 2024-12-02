@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
-import { User } from 'firebase/auth';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useAuthStore } from '@/lib/store';
 
 export function useAuth() {
+  const router = useRouter();
   const { user, setUser, isLoading, setIsLoading, error, setError } = useAuthStore();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((authUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (authUser: User | null) => {
       setUser(authUser);
       setIsLoading(false);
     }, (error) => {
@@ -18,6 +20,15 @@ export function useAuth() {
     return () => unsubscribe();
   }, [setUser, setIsLoading, setError]);
 
-  return { user, isLoading, error };
+  const signOut = async () => {
+    try {
+      await auth.signOut();
+      router.push('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  return { user, isLoading, error, signOut };
 }
 
