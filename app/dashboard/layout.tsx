@@ -1,43 +1,27 @@
 'use client'
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth } from '../lib/firebase';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [user, setUser] = useState<any>(null);
+  const { user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUser(user);
-      } else {
-        router.push('/login');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [router]);
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      router.push('/');
-    } catch (error) {
-      console.error('Error signing out:', error);
+    if (!user) {
+      router.push('/login');
     }
-  };
+  }, [user, router]);
 
   if (!user) {
-    return <div>Loading...</div>;
+    return null;
   }
 
   return (
@@ -52,7 +36,7 @@ export default function DashboardLayout({
             </div>
             <div className="flex items-center">
               <span className="mr-4">{user.email}</span>
-              <Button onClick={handleLogout} variant="ghost">Log out</Button>
+              <Button onClick={() => router.push('/api/auth/signout')} variant="ghost">Log out</Button>
             </div>
           </div>
         </div>

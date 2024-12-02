@@ -1,6 +1,6 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
-import { Toaster } from './components/Toaster'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -17,8 +17,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        {children}
-        <Toaster />
+        <ErrorBoundary fallback={<div>Something went wrong. Please try again later.</div>}>
+          {children}
+        </ErrorBoundary>
       </body>
     </html>
   )

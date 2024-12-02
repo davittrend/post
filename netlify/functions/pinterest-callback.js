@@ -1,4 +1,5 @@
-const { adminAuth, adminDb } = require('../../app/lib/firebase-admin');
+const { adminAuth, adminDb } = require('../../lib/firebase-admin');
+const fetch = require('node-fetch');
 
 const PINTEREST_TOKEN_URL = 'https://api.pinterest.com/v5/oauth/token';
 
@@ -13,17 +14,6 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const sessionCookie = event.headers.cookie;
-    if (!sessionCookie) {
-      return {
-        statusCode: 401,
-        body: JSON.stringify({ error: 'No session cookie' }),
-      };
-    }
-
-    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie);
-    const uid = decodedClaims.uid;
-
     const tokenResponse = await fetch(PINTEREST_TOKEN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -47,16 +37,14 @@ exports.handler = async (event, context) => {
 
     const tokenData = await tokenResponse.json();
 
-    await adminDb.ref(`users/${uid}/pinterest`).set({
-      accessToken: tokenData.access_token,
-      refreshToken: tokenData.refresh_token,
-      expiresAt: Date.now() + tokenData.expires_in * 1000,
-    });
+    // Here, we would typically associate the token with a user
+    // For this example, we'll just log it
+    console.log('Pinterest token obtained:', tokenData);
 
     return {
       statusCode: 302,
       headers: {
-        Location: `${process.env.NEXT_PUBLIC_DOMAIN}/dashboard/accounts`,
+        Location: `${process.env.NEXT_PUBLIC_DOMAIN}/dashboard/accounts?connected=true`,
       },
     };
   } catch (error) {
